@@ -42,39 +42,62 @@ Debes conectar la salida `component_as_tool` de **ProgramaSQLComponent-e0mn5** a
 
 ---
 
-### 2. **Real-Time Logger NO está conectado al flujo principal**
+### 2. **Real-Time Logger NO está conectado al flujo**
 
 #### ❌ Problema
 El componente **Real-Time Logger** existe en el flow pero NO tiene conexiones de entrada ni salida, por lo que no está capturando logs.
 
-#### ✅ Solución Requerida
-Tienes dos opciones:
+**ID actual:** `CustomComponent-tKlcR`
+**Estado:** ⚠️ Aislado (0 conexiones)
 
-**Opción A: Conectar a los agentes principales (Recomendado)**
-- Conecta la salida `message` de cada agente al input del Real-Time Logger
-- Esto permitirá ver en tiempo real qué están procesando los agentes
+#### ✅ Solución Requerida: DUPLICAR y conectar en múltiples puntos
 
-**Opción B: Conectar al flujo de validación**
-- Conecta después del **JWT Validator + Message**
-- Esto registrará todas las entradas que pasan la validación
+Para tener logs de **CADA paso del flujo**, necesitas:
 
-#### 🔧 Cómo Conectar
+1. **Duplicar el Real-Time Logger 12 veces** (total 13 loggers)
+2. **Conectar cada uno después de un componente importante**
+3. **Dar a cada uno un `log_prefix` único** para identificar la etapa
 
-**Para Opción A:**
-1. Localiza el componente **Real-Time Logger**
-2. Para cada agente importante:
-   - Arrastra desde la salida `response` o `message` del agente
-   - Conéctala a la entrada del Real-Time Logger
-3. Conecta la salida del Logger al siguiente componente en la cadena
+#### 🗺️ Puntos de Conexión Recomendados
 
-**Para Opción B:**
-1. Inserta el Real-Time Logger entre **JWT Validator** y **Agente Validador**
-2. Flujo debe ser: JWT Validator → Real-Time Logger → Agente Validador
+| # | Después de... | log_prefix | Propósito |
+|---|---------------|------------|-----------|
+| 1 | JWT Validator + Message | `01_JWT_VALIDATED` | Entrada validada |
+| 2 | Agente Validador | `02_VALIDACION_SEGURIDAD` | Resultado validación |
+| 3 | Agente Interprete decisor | `03_DECISION_PROCESO` | Proceso identificado |
+| 4 | Agente detector perguntas | `04_TIPO_PREGUNTA` | Tipo de pregunta |
+| 5 | Agente Geral Pedidos | `05_PEDIDOS_GENERAL` | Entrada pedidos |
+| 6 | Agente especialista Pedidos | `06_PEDIDOS_ESPECIALISTA` | Respuesta pedidos |
+| 7 | Agente geral suprimentos | `07_SUPRIMIENTOS_GENERAL` | Entrada suprimentos |
+| 8 | Esp. requisicao | `08_SUPR_REQUISICION` | Requisiciones |
+| 9 | Esp. compra | `09_SUPR_COMPRA` | Compras |
+| 10 | Esp. materiales | `10_SUPR_MATERIALES` | Materiales |
+| 11 | Esp. centro de custo | `11_SUPR_CENTRO_COSTO` | Centros costo |
+| 12 | Agente Geral Estoque | `12_ESTOQUE_GENERAL` | Entrada estoque |
+| 13 | Agente especialista estoque | `13_ESTOQUE_ESPECIALISTA` | Respuesta estoque |
+
+#### 🔧 Cómo Conectar (Para cada logger)
+
+1. **Duplicar componente:**
+   - Selecciona Real-Time Logger existente
+   - `Ctrl+C` → `Ctrl+V` (copiar/pegar)
+   - Repite 12 veces
+
+2. **Configurar cada logger:**
+   - Cambia `log_prefix` según tabla arriba
+   - Mantén: `log_input_data = true`, `include_timestamp = true`
+
+3. **Insertar en la cadena:**
+   - Rompe conexión existente (ej: `Agente A` → `Agente B`)
+   - Inserta logger: `Agente A` → `Logger (input_data)` → `Logger (output)` → `Agente B`
 
 #### 📝 Impacto si NO se conecta
-- ⚠️ No podrás ver logs en tiempo real desde Replit
-- ⚠️ La función de streaming (SSE) no funcionará correctamente
-- ⚠️ Sin visibilidad del proceso interno del flow
+- ❌ No podrás ver logs en tiempo real desde Replit
+- ❌ No sabrás qué está procesando cada agente
+- ❌ Imposible debuguear dónde falla el flujo
+- ❌ La función de streaming (SSE) no mostrará información útil
+
+📖 **Ver guía completa:** `ESTRATEGIA_LOGS_COMPLETOS.md`
 
 ---
 
