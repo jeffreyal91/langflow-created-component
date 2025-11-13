@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Langflow Real-Time Logger - Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .config-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .config-panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .status.connecting {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .panel h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .log-entry {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-entry .log-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .log-entry .log-name {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .log-entry .log-time {
+            color: #6b7280;
+        }
+
+        .log-entry .log-message {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .log-level {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .log-level.INFO { background: #3b82f6; color: white; }
+        .log-level.DEBUG { background: #8b5cf6; color: white; }
+        .log-level.WARNING { background: #f59e0b; color: white; }
+        .log-level.ERROR { background: #ef4444; color: white; }
+
+        .message-entry {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message-sender {
+            font-weight: 600;
+            color: #3b82f6;
+            margin-bottom: 5px;
+        }
+
+        .message-text {
+            color: #1f2937;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .clear-btn {
+            background: #ef4444;
+            padding: 10px 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Langflow Real-Time Logger Monitor</h1>
+
+        <!-- Configuration Panel -->
+        <div class="config-panel">
+            <h2>⚙️ Configuración de Conexión</h2>
+            <div class="input-group">
+                <label for="apiUrl">URL de Langflow API:</label>
+                <input type="text" id="apiUrl" value="http://localhost:7860" placeholder="http://localhost:7860">
+            </div>
+            <div class="input-group">
+                <label for="flowId">Flow ID:</label>
+                <input type="text" id="flowId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+            <div class="input-group">
+                <label for="inputValue">Input Value (opcional - para ejecutar el flow):</label>
+                <input type="text" id="inputValue" placeholder="Tu mensaje o input al flow">
+            </div>
+            <button id="connectBtn" onclick="executeAndConnect()">🚀 Ejecutar Flow y Conectar SSE</button>
+            <button id="disconnectBtn" onclick="disconnect()" style="display: none; background: #ef4444; margin-top: 10px;">🛑 Desconectar</button>
+            <div>
+                <span id="statusIndicator" class="status disconnected">⚫ Desconectado</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="logCount">0</div>
+                <div class="stat-label">Logs Recibidos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="messageCount">0</div>
+                <div class="stat-label">Mensajes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="eventCount">0</div>
+                <div class="stat-label">Eventos Totales</div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <!-- Logs Panel -->
+            <div class="panel">
+                <h3>📝 Logs en Tiempo Real</h3>
+                <button class="clear-btn" onclick="clearLogs()">🗑️ Limpiar Logs</button>
+                <div id="logsContainer"></div>
+            </div>
+
+            <!-- Messages Panel -->
+            <div class="panel">
+                <h3>💬 Mensajes</h3>
+                <button class="clear-btn" onclick="clearMessages()">🗑️ Limpiar Mensajes</button>
+                <div id="messagesContainer"></div>
+            </div>
+        </div>
+
+        <!-- All Events Panel -->
+        <div class="panel" style="margin-top: 20px;">
+            <h3>🔔 Todos los Eventos (Raw JSON)</h3>
+            <button class="clear-btn" onclick="clearEvents()">🗑️ Limpiar Eventos</button>
+            <div id="eventsContainer" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let logCount = 0;
+        let messageCount = 0;
+        let eventCount = 0;
+
+        function updateStatus(status, text) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = `status ${status}`;
+            indicator.textContent = text;
+        }
+
+        async function executeAndConnect() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const flowId = document.getElementById('flowId').value;
+            const inputValue = document.getElementById('inputValue').value;
+
+            if (!apiUrl || !flowId) {
+                alert('Por favor ingresa la URL de la API y el Flow ID');
+                return;
+            }
+
+            updateStatus('connecting', '🔄 Ejecutando flow...');
+            document.getElementById('connectBtn').disabled = true;
+
+            try {
+                // Ejecutar el flow
+                const response = await fetch(`${apiUrl}/api/v1/run/${flowId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input_value: inputValue || 'Test message',
+                        input_type: 'chat',
+                        output_type: 'chat',
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const jobId = data.session_id || data.job_id;
+
+                if (!jobId) {
+                    throw new Error('No se recibió job_id del servidor');
+                }
+
+                console.log('Flow ejecutado, Job ID:', jobId);
+                addEvent('INFO', 'Flow ejecutado exitosamente', { job_id: jobId });
+
+                // Conectar SSE
+                connectSSE(apiUrl, jobId);
+
+            } catch (error) {
+                console.error('Error ejecutando flow:', error);
+                alert('Error ejecutando flow: ' + error.message);
+                updateStatus('disconnected', '⚫ Error');
+                document.getElementById('connectBtn').disabled = false;
+            }
+        }
+
+        function connectSSE(apiUrl, jobId) {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            updateStatus('connecting', '🔄 Conectando SSE...');
+
+            // Probar diferentes endpoints
+            const sseUrl = `${apiUrl}/api/v1/build/${jobId}/events`;
+            console.log('Conectando a:', sseUrl);
+
+            eventSource = new EventSource(sseUrl);
+
+            eventSource.onopen = () => {
+                console.log('SSE conectado');
+                updateStatus('connected', '🟢 Conectado');
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('disconnectBtn').style.display = 'block';
+            };
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Evento recibido:', data);
+
+                    eventCount++;
+                    document.getElementById('eventCount').textContent = eventCount;
+
+                    // Agregar a eventos raw
+                    addRawEvent(data);
+
+                    // Procesar según tipo de evento
+                    switch (data.event) {
+                        case 'log':
+                            handleLog(data.data);
+                            break;
+                        case 'message':
+                            handleMessage(data.data);
+                            break;
+                        case 'token':
+                            handleToken(data.data);
+                            break;
+                        case 'error':
+                            handleError(data.data);
+                            break;
+                        case 'end':
+                            handleEnd(data.data);
+                            break;
+                    }
+                } catch (e) {
+                    console.error('Error parseando evento:', e);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('Error SSE:', error);
+                updateStatus('disconnected', '🔴 Error de conexión');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('connectBtn').style.display = 'block';
+                document.getElementById('disconnectBtn').style.display = 'none';
+            };
+        }
+
+        function handleLog(logData) {
+            logCount++;
+            document.getElementById('logCount').textContent = logCount;
+
+            const logsContainer = document.getElementById('logsContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            const timestamp = new Date().toLocaleTimeString();
+            const message = typeof logData.message === 'object'
+                ? JSON.stringify(logData.message, null, 2)
+                : logData.message;
+
+            const level = logData.message?.level || 'INFO';
+
+            logEntry.innerHTML = `
+                <div class="log-header">
+                    <span class="log-name">${logData.name || 'LOG'}<span class="log-level ${level}">${level}</span></span>
+                    <span class="log-time">${timestamp}</span>
+                </div>
+                <div class="log-message">${message}</div>
+            `;
+
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+        }
+
+        function handleMessage(messageData) {
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageEntry = document.createElement('div');
+            messageEntry.className = 'message-entry';
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            messageEntry.innerHTML = `
+                <div class="log-header">
+                    <span class="message-sender">${messageData.sender || 'System'}</span>
+                    <span class="log-time">${timestamp}</span>
+                </div>
+                <div class="message-text">${messageData.text || JSON.stringify(messageData)}</div>
+            `;
+
+            messagesContainer.insertBefore(messageEntry, messagesContainer.firstChild);
+        }
+
+        function handleToken(tokenData) {
+            console.log('Token recibido:', tokenData.chunk);
+            // Aquí podrías acumular tokens si estás haciendo streaming de LLM
+        }
+
+        function handleError(errorData) {
+            console.error('Error del flow:', errorData);
+            addEvent('ERROR', 'Error en el flow', errorData);
+        }
+
+        function handleEnd(endData) {
+            console.log('Flow completado:', endData);
+            addEvent('INFO', 'Flow completado', endData);
+            updateStatus('disconnected', '✅ Flow Completado');
+        }
+
+        function addRawEvent(data) {
+            const eventsContainer = document.getElementById('eventsContainer');
+            const eventEntry = document.createElement('div');
+            eventEntry.className = 'log-entry';
+            eventEntry.style.fontSize = '12px';
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            eventEntry.innerHTML = `
+                <div class="log-header">
+                    <span class="log-name">${data.event || 'EVENT'}</span>
+                    <span class="log-time">${timestamp}</span>
+                </div>
+                <div class="log-message">${JSON.stringify(data, null, 2)}</div>
+            `;
+
+            eventsContainer.insertBefore(eventEntry, eventsContainer.firstChild);
+        }
+
+        function addEvent(level, message, data) {
+            const logsContainer = document.getElementById('logsContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            const timestamp = new Date().toLocaleTimeString();
+
+            logEntry.innerHTML = `
+                <div class="log-header">
+                    <span class="log-name">SYSTEM<span class="log-level ${level}">${level}</span></span>
+                    <span class="log-time">${timestamp}</span>
+                </div>
+                <div class="log-message">${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}</div>
+            `;
+
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+        }
+
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            updateStatus('disconnected', '⚫ Desconectado');
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').style.display = 'block';
+            document.getElementById('disconnectBtn').style.display = 'none';
+        }
+
+        function clearLogs() {
+            document.getElementById('logsContainer').innerHTML = '';
+            logCount = 0;
+            document.getElementById('logCount').textContent = logCount;
+        }
+
+        function clearMessages() {
+            document.getElementById('messagesContainer').innerHTML = '';
+            messageCount = 0;
+            document.getElementById('messageCount').textContent = messageCount;
+        }
+
+        function clearEvents() {
+            document.getElementById('eventsContainer').innerHTML = '';
+            eventCount = 0;
+            document.getElementById('eventCount').textContent = eventCount;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', disconnect);
+    </script>
+</body>
+</html>
