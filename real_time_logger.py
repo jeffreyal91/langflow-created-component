@@ -7,10 +7,10 @@ from typing import Any
 from datetime import datetime
 import json
 
-from lfx.custom.custom_component.component import Component
-from lfx.io import MessageTextInput, DropdownInput, BoolInput, Output, StrInput
-from lfx.schema.message import Message
-from lfx.schema import Data
+from langflow.custom import Component
+from langflow.io import MessageTextInput, DropdownInput, BoolInput, Output, StrInput
+from langflow.schema.message import Message
+from langflow.schema import Data
 
 
 class RealTimeLogger(Component):
